@@ -20,13 +20,12 @@ uv.lock
 .idea/
 *.swp
 *.swo
-*~
 
-# Environment variables
+# Environment
 .env
 .env.local
 
-# Data
+# Data (don't copy into image)
 data/
 *.db
 *.sqlite
@@ -41,15 +40,25 @@ logs/
 htmlcov/
 .tox/
 
-# Distribution
-dist/
-build/
-*.egg-info/
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Temporary
 *.tmp
 *.bak

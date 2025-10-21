@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Main Mneme API service
+  mneme-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mneme-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+    # Use .env file directly
+    env_file:
+      - .env
+
+    # Override specific Docker-related settings
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+
+    volumes:
+      # Mount your Obsidian vault (READ-ONLY for safety)
+      - ${OBSIDIAN_VAULT_PATH:-./example-vault}:/vault:ro
+      # Persist logs
+      - ./data/logs:/app/data/logs
+
+    networks:
+      - mneme-network
+
+    restart: unless-stopped
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Optional: Zipkin for tracing
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: mneme-zipkin
+    ports:
+      - "9411:9411"
+    environment:
+      - STORAGE_TYPE=mem
+    networks:
+      - mneme-network
+    restart: unless-stopped
+    profiles:
+      - observability
+
+networks:
+  mneme-network:
+    driver: bridge
