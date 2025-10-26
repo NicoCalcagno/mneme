@@ -168,8 +168,8 @@ class RAGAgent:
             response = self.agent.run(user_message)
 
             # Extract answer from StepResult object
-            if hasattr(response, "output"):
-                answer = response.output.strip() if response.output else ""
+            if hasattr(response, "text"):
+                answer = response.text.strip() if response.text else ""
             elif isinstance(response, dict):
                 answer = response.get("output", "").strip()
             else:
