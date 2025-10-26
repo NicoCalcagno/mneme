@@ -3,13 +3,9 @@ FastAPI dependencies for dependency injection
 """
 
 from functools import lru_cache
-from typing import Optional
 from config.settings import Settings
-
-
-# Placeholder imports - will be implemented in later phases
-# from rag.agent import RAGAgent
-# from ingestion.vectorstore import VectorStore
+from rag.agent import RAGAgent
+from ingestion.vectorstore import VectorStore
 
 
 @lru_cache()
@@ -23,28 +19,25 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def get_vector_store():
+@lru_cache()
+def get_vector_store() -> VectorStore:
     """
     Get vector store instance (dependency injection).
 
     Returns:
         VectorStore instance
     """
-    # TODO: Implement in Phase 5
-    # settings = get_settings()
-    # return VectorStore(settings)
-    return None
+    settings = get_settings()
+    return VectorStore(settings)
 
 
-def get_rag_agent():
+@lru_cache()
+def get_rag_agent() -> RAGAgent:
     """
     Get RAG agent instance (dependency injection).
 
     Returns:
         RAGAgent instance
     """
-    # TODO: Implement in Phase 7
-    # settings = get_settings()
-    # vector_store = get_vector_store()
-    # return RAGAgent(settings, vector_store)
-    return None
+    settings = get_settings()
+    return RAGAgent(settings)

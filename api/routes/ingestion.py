@@ -9,10 +9,12 @@ from api.models.ingestion import (
     IngestionRequest,
     IngestionResponse,
     IngestionStatusResponse,
+    IngestionStatus,
 )
 from api.models.common import ErrorResponse
 from api.dependencies import get_settings
 from config.settings import Settings
+from ingestion import IngestionPipeline
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 
@@ -27,8 +29,21 @@ async def run_ingestion_task(request: IngestionRequest, settings: Settings):
     """
     logger.info("Starting background ingestion task")
 
-    # TODO: Implement actual ingestion logic
-    # This will be connected to the ingestion pipeline in later phases
+    try:
+        # Initialize ingestion pipeline
+        pipeline = IngestionPipeline(settings)
+
+        # Run ingestion
+        stats = pipeline.ingest_vault(
+            vault_path=request.vault_path,
+            incremental=request.incremental,
+            force=request.force,
+            dry_run=request.dry_run,
+        )
+
+        logger.info(f"Background ingestion completed: {stats}")
+    except Exception as e:
+        logger.error(f"Background ingestion failed: {e}", exc_info=True)
 
     logger.info("Background ingestion task completed")
 

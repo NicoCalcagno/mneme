@@ -23,6 +23,8 @@ dependencies = [
     "datapizza-ai>=0.0.2",
     "datapizza-ai-clients-openai>=0.0.2",
     "datapizza-ai-clients-anthropic>=0.0.2",
+    "datapizza-ai-embedders-openai>=0.0.2",
+    "datapizza-ai-vectorstores-qdrant>=0.0.2",
 
     # API Framework
     "fastapi>=0.109.0",
@@ -31,9 +33,13 @@ dependencies = [
     "pydantic-settings>=2.1.0",
 
     # Utilities
-    "python-dotenv>=1.0.0",  # ✅ Già presente
+    "python-dotenv>=1.0.0",
     "loguru>=0.7.2",
     "python-multipart>=0.0.9",
+    "requests>=2.31.0",
+
+    # Frontend
+    "gradio>=4.0.0",
 
     # Markdown & Obsidian parsing
     "markdown>=3.5.0",
@@ -41,7 +47,7 @@ dependencies = [
     "python-frontmatter>=1.1.0",
 
     # Vector Store
-    "qdrant-client>=1.7.0",  # ✅ Già presente
+    "qdrant-client>=1.7.0",
 
     # Optional: Local embeddings
     # "sentence-transformers>=2.3.0",
@@ -68,8 +74,9 @@ all = [
 ]
 
 [project.scripts]
-mneme-ingest = "mneme.ingestion.ingest:main"
-mneme-serve = "mneme.api.main:main"
+mneme-ingest = "ingestion.ingest:main"
+mneme-serve = "api.main:main"
+mneme-chat = "gradio_chat:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/mneme"

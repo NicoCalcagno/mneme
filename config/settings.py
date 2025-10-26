@@ -133,8 +133,8 @@ class Settings(BaseSettings):
         ge=0,
         description="Chunk overlap size"
     )
-    chunking_strategy: Literal["recursive", "fixed", "semantic"] = Field(
-        default="recursive",
+    chunking_strategy: Literal["page", "recursive", "fixed", "semantic"] = Field(
+        default="page",
         description="Chunking strategy"
     )
 

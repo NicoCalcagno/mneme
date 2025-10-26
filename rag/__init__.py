@@ -2,5 +2,12 @@
 RAG (Retrieval-Augmented Generation) package
 """
 
-# Placeholder - will be implemented in later phases
-__all__ = []
+from rag.agent import RAGAgent
+from rag.retriever import Retriever
+from rag.prompts import RAGPrompts
+
+__all__ = [
+    "RAGAgent",
+    "Retriever",
+    "RAGPrompts",
+]

@@ -18,6 +18,11 @@ services:
     environment:
       - API_HOST=0.0.0.0
       - API_PORT=8000
+      - OBSIDIAN_VAULT_PATH=/vault/Aitho
+      - EMBEDDING_BATCH_SIZE=10
+      - CHUNKING_STRATEGY=fixed
+      - CHUNK_SIZE=800
+      - RETRIEVAL_MIN_SCORE=0.4
 
     volumes:
       # Mount your Obsidian vault (READ-ONLY for safety)
@@ -39,6 +44,38 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  # Gradio Chat Frontend
+  mneme-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mneme-frontend
+    ports:
+      - "7860:7860"
+
+    environment:
+      - API_BASE_URL=http://mneme-api:8000/api/v1
+
+    command: python -m gradio_chat
+
+    networks:
+      - mneme-network
+
+    depends_on:
+      mneme-api:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # Optional: Zipkin for tracing
   zipkin:

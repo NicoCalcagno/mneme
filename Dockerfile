@@ -46,6 +46,7 @@ COPY ingestion/ ./ingestion/
 COPY rag/ ./rag/
 COPY utils/ ./utils/
 COPY __init__.py ./__init__.py
+COPY gradio_chat.py ./gradio_chat.py
 
 # Create data directories
 RUN mkdir -p /app/data/qdrant /app/data/logs

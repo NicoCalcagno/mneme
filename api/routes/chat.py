@@ -57,26 +57,27 @@ async def chat(
             f"message_length: {len(request.message)}"
         )
 
-        # TODO: Call RAG agent with the message
-        # For now, return a placeholder response
-
-        # Placeholder response
-        assistant_message = (
-            "This is a placeholder response. "
-            "The RAG agent integration will be implemented in the next phase."
+        # Call RAG agent with the message
+        response = agent.query(
+            question=request.message,
+            top_k=request.max_sources,
+            include_sources=request.include_sources,
         )
 
+        assistant_message = response["answer"]
+
+        # Format sources
         sources = []
-        if request.include_sources:
-            # Placeholder sources
+        if request.include_sources and response.get("sources"):
             sources = [
                 Source(
-                    file_path="notes/example.md",
-                    chunk_id="chunk_001",
-                    score=0.95,
-                    content="This is example content from your notes.",
-                    metadata={"tags": ["example"]},
+                    file_path=src["file_path"],
+                    chunk_id=src["chunk_id"],
+                    score=src["score"],
+                    content=src["content"],
+                    metadata=src.get("metadata", {}),
                 )
+                for src in response["sources"]
             ]
 
         processing_time = (time.time() - start_time) * 1000
@@ -98,7 +99,7 @@ async def chat(
         )
 
     except Exception as e:
-        logger.error(f"Error processing chat request: {str(e)}", exc_info=True)
+        logger.error("Error processing chat request: {}", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing chat request: {str(e)}",
