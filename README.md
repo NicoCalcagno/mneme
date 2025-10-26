@@ -1,622 +1,516 @@
-# 🧠 Mneme
-
-> *Dal greco μνήμη (mnēmē) - "memoria, ricordo"*
-
-Mneme trasforma il tuo vault Obsidian in un cervello digitale interrogabile. Attraverso RAG (Retrieval-Augmented Generation), indicizza tutte le tue note in un vector store e ti permette di conversare naturalmente con la tua conoscenza personale.
-
-Non più ricerca manuale tra centinaia di note: Mneme comprende il contesto, trova connessioni semantiche e recupera istantaneamente le informazioni rilevanti per rispondere alle tue domande.
-
----
-
-## ✨ Features
-
-- 🗂️ **Ingestion automatica** - Sincronizza automaticamente le tue note da Obsidian
-- 🔍 **Semantic Search** - Ricerca basata sul significato, non solo su keyword
-- 💬 **Conversational Interface** - Chatta con le tue note in linguaggio naturale
-- 🧩 **Obsidian-aware** - Supporto per wikilinks, backlinks, tags e metadata
-- 🔄 **Multi-LLM Support** - Passa da OpenAI ad Anthropic, Mistral o altri provider
-- 📊 **Built-in Observability** - Monitoraggio performance con OpenTelemetry
-- 🚀 **Production Ready** - Basato su Datapizza AI, framework italiano enterprise-grade
-- 🔒 **Privacy First** - Possibilità di eseguire tutto in locale
-
----
-
-## 🏗️ Architettura
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Obsidian Vault                        │
-│                  (markdown files)                        │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-          ┌──────────────────────┐
-          │  Ingestion Pipeline  │
-          │  - ObsidianParser    │
-          │  - TextSplitter      │
-          │  - Embeddings        │
-          └──────────┬───────────┘
-                     │
-                     ▼
-          ┌──────────────────────┐
-          │   Vector Store       │
-          │   (Qdrant/Chroma)    │
-          └──────────┬───────────┘
-                     │
-                     ▼
-          ┌──────────────────────┐
-          │   RAG Agent          │
-          │   (Datapizza AI)     │
-          └──────────┬───────────┘
-                     │
-                     ▼
-          ┌──────────────────────┐
-          │    FastAPI           │
-          │    REST API          │
-          └──────────────────────┘
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisiti
-
-- **Docker** (metodo consigliato) oppure
-- **Python >= 3.10, < 3.13** + [uv](https://github.com/astral-sh/uv)
-- Un vault Obsidian esistente
-- API Key di un provider LLM (OpenAI, Anthropic, etc.)
-
----
-
-### 🐳 Metodo 1: Docker (Consigliato)
-
-Il metodo più semplice per avviare Mneme è utilizzare Docker.
-
-#### Setup rapido
-
-```bash
-# 1. Clona il repository
-git clone https://github.com/tuousername/mneme.git
-cd mneme
-
-# 2. Configura le variabili d'ambiente
-cp .env.example .env
-nano .env  # Modifica con i tuoi parametri
-
-# 3. Avvia con Docker
-docker-compose up -d
-
-# 4. Verifica che sia attivo
-curl http://localhost:8000/api/v1/health
-```
-
-#### Comandi Docker utili
-
-```bash
-# Avvia il server
-docker-compose up -d
-
-# Visualizza i log
-docker-compose logs -f
-
-# Ferma il server
-docker-compose down
-
-# Rebuild dopo modifiche
-docker-compose up -d --build
-
-# Avvia con osservabilità (include Zipkin)
-docker-compose --profile observability up -d
-```
-
-#### Oppure con Docker diretto (senza compose)
-
-```bash
-# Build dell'immagine
-docker build -t mneme:latest .
-
-# Avvio del container
-docker run -d \
-  --name mneme \
-  -p 8000:8000 \
-  --env-file .env \
-  mneme:latest
-
-# Visualizza i log
-docker logs -f mneme
-
-# Ferma il container
-docker stop mneme && docker rm mneme
-```
-
----
-
-### 🐍 Metodo 2: Installazione locale con Python
-
-Per sviluppo o se preferisci non usare Docker.
-
-#### Installazione
-
-```bash
-# 1. Installa uv (se non già installato)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2. Clona il repository
-git clone https://github.com/tuousername/mneme.git
-cd mneme
-
-# 3. Crea virtual environment e installa dipendenze
-uv venv
-source .venv/bin/activate  # Su Windows: .venv\Scripts\activate
-
-# 4. Installa il progetto
-uv pip install -e .
-
-# Per sviluppo (include pytest, black, ruff, mypy)
-uv pip install -e ".[dev]"
-
-# Per embeddings locali (include sentence-transformers)
-uv pip install -e ".[local]"
-
-# Per installare tutto
-uv pip install -e ".[all]"
-```
-
-#### Configurazione
-
-```bash
-# Copia il file di esempio
-cp .env.example .env
-
-# Modifica .env con i tuoi parametri
-nano .env
-```
-
-#### Avvio del server
-
-```bash
-# Metodo 1: Usando il comando installato
-mneme-serve
-
-# Metodo 2: Usando Python direttamente
-python -m api.main
-
-# Con auto-reload per development
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
----
-
-### ⚙️ Configurazione `.env`
-
-Copia `.env.example` in `.env` e modifica i seguenti parametri:
-
-```env
-# =========================================================================
-# OBSIDIAN VAULT
-# =========================================================================
-OBSIDIAN_VAULT_PATH=/path/to/your/obsidian/vault
-OBSIDIAN_FILE_EXTENSIONS=.md,.markdown
-OBSIDIAN_EXCLUDE_FOLDERS=.obsidian,.trash,templates
-
-# =========================================================================
-# LLM PROVIDER
-# =========================================================================
-LLM_PROVIDER=openai                    # openai, anthropic, google, mistral
-LLM_MODEL=gpt-4o
-LLM_TEMPERATURE=0.7
-LLM_MAX_TOKENS=2000
-
-# =========================================================================
-# API KEYS
-# =========================================================================
-OPENAI_API_KEY=your-openai-api-key-here
-# ANTHROPIC_API_KEY=your-anthropic-key  # Se usi Anthropic
-
-# =========================================================================
-# EMBEDDINGS
-# =========================================================================
-EMBEDDING_PROVIDER=openai              # openai o local
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSIONS=1536
-EMBEDDING_BATCH_SIZE=100
-
-# =========================================================================
-# VECTOR STORE
-# =========================================================================
-VECTOR_STORE_TYPE=qdrant               # qdrant o chroma
-VECTOR_STORE_COLLECTION=mneme_knowledge
-
-# Qdrant Cloud (production)
-QDRANT_URL=https://your-cluster.region.cloud.qdrant.io
-QDRANT_API_KEY=your-qdrant-api-key
-
-# Qdrant Locale (development)
-# QDRANT_PATH=./data/qdrant
-# Commenta QDRANT_URL e QDRANT_API_KEY se usi locale
-
-# =========================================================================
-# CHUNKING
-# =========================================================================
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
-CHUNKING_STRATEGY=recursive            # recursive, fixed, semantic
-
-# =========================================================================
-# RETRIEVAL
-# =========================================================================
-RETRIEVAL_TOP_K=5
-RETRIEVAL_MIN_SCORE=0.7
-
-# =========================================================================
-# API SERVER
-# =========================================================================
-API_HOST=0.0.0.0
-API_PORT=8000
-API_RELOAD=true                        # Auto-reload in development
-API_WORKERS=1
-CORS_ORIGINS=*
-API_PREFIX=/api/v1
-ENABLE_DOCS=true
-
-# =========================================================================
-# OBSERVABILITY
-# =========================================================================
-ENABLE_TRACING=false
-LOG_LEVEL=INFO
-LOG_FILE=./data/logs/mneme.log
-
-# =========================================================================
-# DEVELOPMENT
-# =========================================================================
-ENVIRONMENT=development                # development, production, testing
-DEBUG=false
-```
-
----
-
-### 🧪 Verifica l'installazione
-
-```bash
-# 1. Controlla la health dell'API
-curl http://localhost:8000/api/v1/health
-
-# 2. Visualizza la documentazione interattiva
-open http://localhost:8000/docs
-
-# 3. Testa gli endpoint
-curl http://localhost:8000/api/v1/ready
-curl http://localhost:8000/api/v1/live
-```
-
-**Risposta health check di successo:**
-```json
-{
-  "status": "healthy",
-  "version": "0.1.0",
-  "uptime_seconds": 123.45,
-  "timestamp": "2025-10-21T20:30:00Z",
-  "vector_store_connected": true,
-  "llm_provider": "openai",
-  "checks": {
-    "vector_store": true
-  }
-}
-```
----
-
-## 📁 Struttura del Progetto
-
-```
-mneme/
-├── README.md
-├── CLAUDE.md                     # Guida per Claude Code
-├── pyproject.toml                # Configurazione progetto e dipendenze
-├── docker-compose.yaml           # Docker Compose setup
-├── Dockerfile                    # Docker image build
-├── .env.example                  # Template configurazione
-├── .gitignore
-│
-├── __init__.py                   # Root package init
-│
-├── api/                          # 🌐 REST API (FastAPI)
-│   ├── __init__.py
-│   ├── main.py                   # FastAPI app entry point
-│   ├── dependencies.py           # Dependency injection
-│   ├── middleware.py             # Custom middleware (logging, etc)
-│   ├── routes/
-│   │   ├── __init__.py
-│   │   ├── chat.py               # Chat endpoints
-│   │   ├── health.py             # Health check endpoints
-│   │   └── ingestion.py          # Ingestion trigger endpoints
-│   └── models/
-│       ├── __init__.py
-│       ├── enums.py              # Enumerations
-│       ├── common.py             # Shared models
-│       ├── chat.py               # Chat request/response models
-│       ├── health.py             # Health check models
-│       └── ingestion.py          # Ingestion models
-│
-├── config/                       # ⚙️  Configurazione
-│   ├── __init__.py
-│   └── settings.py               # Pydantic Settings (env vars)
-│
-├── ingestion/                    # 📥 Pipeline di ingestion
-│   ├── __init__.py
-│   ├── parser.py                 # (TODO) ObsidianParser
-│   ├── chunker.py                # (TODO) Text splitting
-│   ├── embedder.py               # (TODO) Embedding generation
-│   ├── vectorstore.py            # (TODO) Vector DB operations
-│   └── ingest.py                 # (TODO) CLI entry point
-│
-├── rag/                          # 🤖 RAG Agent
-│   ├── __init__.py
-│   ├── agent.py                  # (TODO) Datapizza AI agent
-│   ├── retriever.py              # (TODO) Custom retrieval
-│   └── prompts.py                # (TODO) System prompts
-│
-├── utils/                        # 🛠️  Utilities
-│   ├── __init__.py
-│   └── logger.py                 # (TODO) Logging utilities
-│
-├── scripts/                      # 📜 Scripts di utilità
-│   └── test-qdrant.py            # Test connessione Qdrant
-│
-├── tests/                        # (TODO) Test suite
-│   ├── __init__.py
-│   ├── test_parser.py
-│   ├── test_agent.py
-│   └── test_api.py
-│
-└── data/                         # 💾 Gitignored
-    ├── qdrant/                   # Vector DB storage (locale)
-    └── logs/                     # Application logs
-```
-
-**Nota sulla struttura:** I moduli marcati con `(TODO)` sono placeholder che verranno implementati nelle prossime fasi del progetto.
-
----
-
-## 🔧 API Endpoints
-
-L'API REST è disponibile su `http://localhost:8000` con documentazione interattiva su `/docs`.
-
-### 🏥 Health Check
-
-#### `GET /api/v1/health`
-Verifica lo stato di salute dell'applicazione e delle sue dipendenze.
-
+<a id="readme-top"></a>
+
+<!-- PROJECT SHIELDS -->
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![MIT License][license-shield]][license-url]
+[![LinkedIn][linkedin-shield]][linkedin-url]
+
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <h1 align="center">🧠 Mneme</h1>
+
+  <p align="center">
+    Transform your Obsidian vault into a queryable AI-powered knowledge base
+    <br />
+    <em>From Greek μνήμη (mnēmē) - "memory, remembrance"</em>
+    <br />
+    <br />
+    <a href="https://github.com/NicoCalcagno/mneme"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/NicoCalcagno/mneme/issues/new?labels=bug&template=bug-report.md">Report Bug</a>
+    ·
+    <a href="https://github.com/NicoCalcagno/mneme/issues/new?labels=enhancement&template=feature-request.md">Request Feature</a>
+  </p>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+        <li><a href="#features">Features</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+    <li><a href="#api-endpoints">API Endpoints</a></li>
+    <li><a href="#development">Development</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="#acknowledgments">Acknowledgments</a></li>
+  </ol>
+</details>
+
+<!-- ABOUT THE PROJECT -->
+## About The Project
+
+Mneme is a production-ready RAG (Retrieval-Augmented Generation) system that transforms your Obsidian vault into an intelligent, queryable knowledge base. Built on the Datapizza AI framework, it provides semantic search and conversational interfaces to interact naturally with your personal knowledge.
+
+**Why Mneme?**
+* Your notes contain valuable knowledge that's hard to recall and connect
+* Traditional search only finds exact matches, missing semantic relationships
+* You should be able to have natural conversations with your accumulated knowledge
+* Your personal knowledge base deserves the same AI capabilities as enterprise systems
+
+Mneme indexes your Obsidian notes with semantic embeddings, stores them in a vector database, and lets you query them using natural language through a clean chat interface.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Built With
+
+* [![Datapizza AI][Datapizza-badge]][Datapizza-url]
+* [![FastAPI][FastAPI-badge]][FastAPI-url]
+* [![Python][Python-badge]][Python-url]
+* [![Docker][Docker-badge]][Docker-url]
+* [![Gradio][Gradio-badge]][Gradio-url]
+* [![OpenAI][OpenAI-badge]][OpenAI-url]
+
+**Core Technologies:**
+* **[Datapizza AI](https://github.com/datapizza-labs/datapizza-ai)** - RAG framework and agent orchestration
+* **Qdrant Cloud** - Vector database for semantic search
+* **OpenAI/Anthropic** - LLM providers for embeddings and generation
+* **Loguru** - Structured logging
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Features
+
+- 🗂️ **Automatic Ingestion** - Sync your Obsidian notes with semantic embeddings
+- 🔍 **Semantic Search** - Meaning-based retrieval with Qdrant vector store
+- 💬 **Chat Interface** - Clean Gradio frontend to converse with your notes
+- 🧩 **Obsidian-Aware** - Full support for frontmatter, tags, and metadata
+- 🔄 **Multi-LLM Support** - Works with OpenAI and Anthropic models
+- 🚀 **Production Ready** - Built on enterprise-grade Datapizza AI framework
+- 🐳 **Docker Ready** - Complete setup with docker-compose
+- 📊 **Health Monitoring** - Built-in health checks and status endpoints
+- 🎯 **Configurable RAG** - Fine-tune chunking, retrieval, and generation parameters
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- GETTING STARTED -->
+## Getting Started
+
+Get Mneme up and running in less than 5 minutes with Docker.
+
+### Prerequisites
+
+Before you begin, ensure you have:
+
+* **Docker & Docker Compose** - [Install Docker](https://docs.docker.com/get-docker/)
+* **An Obsidian vault** with markdown notes
+* **API Keys** for your LLM provider:
+  - OpenAI API key ([Get one here](https://platform.openai.com/api-keys)), or
+  - Anthropic API key ([Get one here](https://console.anthropic.com/))
+* **Qdrant Cloud account** - [Free tier available](https://cloud.qdrant.io/)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/NicoCalcagno/mneme.git
+   cd mneme
+   ```
+
+2. **Configure environment**
+   ```bash
+   cp .env.example .env
+   nano .env  # Edit with your API keys and vault path
+   ```
+
+3. **Required environment variables**
+   ```env
+   OBSIDIAN_VAULT_PATH=/path/to/your/vault
+   OPENAI_API_KEY=your-openai-key
+   QDRANT_URL=https://your-cluster.cloud.qdrant.io
+   QDRANT_API_KEY=your-qdrant-key
+   ```
+
+4. **Start the services**
+   ```bash
+   docker compose up -d
+   ```
+
+5. **Verify the API is running**
+   ```bash
+   curl http://localhost:8000/api/v1/health
+   ```
+
+6. **Ingest your notes**
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/ingest
+   ```
+
+7. **Open the chat interface**
+   ```bash
+   open http://localhost:7860
+   ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- USAGE -->
+## Usage
+
+### Chat Interface
+
+The Gradio interface at `http://localhost:7860` provides:
+- Natural language queries to your knowledge base
+- Source citations with relevance scores
+- Conversation history
+- Health status monitoring
+
+**Example queries:**
+- "What have I written about AI and machine learning?"
+- "Summarize my notes on productivity systems"
+- "Find connections between my thoughts on creativity and flow state"
+
+### REST API
+
+#### Health Check
 ```bash
 curl http://localhost:8000/api/v1/health
 ```
 
-**Risposta:**
-```json
-{
-  "status": "healthy",
-  "version": "0.1.0",
-  "uptime_seconds": 123.45,
-  "timestamp": "2025-10-21T20:30:00Z",
-  "vector_store_connected": true,
-  "llm_provider": "openai",
-  "vector_store_documents": null,
-  "checks": {
-    "vector_store": true
-  }
-}
-```
-
-#### `GET /api/v1/ready`
-Kubernetes-style readiness probe.
-
-```bash
-curl http://localhost:8000/api/v1/ready
-```
-
-#### `GET /api/v1/live`
-Kubernetes-style liveness probe.
-
-```bash
-curl http://localhost:8000/api/v1/live
-```
-
----
-
-### 💬 Chat (TODO - Da implementare)
-
-#### `POST /api/v1/chat`
-Invia un messaggio al chatbot e ricevi una risposta basata sulle tue note Obsidian.
-
+#### Chat
 ```bash
 curl -X POST http://localhost:8000/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Cosa ho scritto sul machine learning?",
-    "conversation_id": "optional-session-id",
+    "message": "What are my key insights on productivity?",
     "include_sources": true,
-    "temperature": 0.7,
-    "max_tokens": 2000
+    "max_sources": 5
   }'
 ```
 
-**Risposta prevista:**
-```json
-{
-  "conversation_id": "conv_abc123",
-  "message": "Nelle tue note sul machine learning...",
-  "sources": [
-    {
-      "file_path": "notes/ml/intro.md",
-      "chunk_id": "chunk_001",
-      "score": 0.95,
-      "content": "Il machine learning è...",
-      "metadata": {
-        "tags": ["ml", "ai"],
-        "created_at": "2024-01-15"
-      }
-    }
-  ],
-  "processing_time_ms": 1234.56,
-  "metadata": {
-    "model": "gpt-4o",
-    "temperature": 0.7
-  }
-}
-```
-
-#### `GET /api/v1/chat/conversations`
-Lista tutte le conversazioni salvate.
-
+#### Ingestion
 ```bash
-curl http://localhost:8000/api/v1/chat/conversations
-```
+# Ingest all notes
+curl -X POST http://localhost:8000/api/v1/ingest
 
-#### `DELETE /api/v1/chat/conversations/{conversation_id}`
-Elimina una conversazione specifica.
-
-```bash
-curl -X DELETE http://localhost:8000/api/v1/chat/conversations/conv_abc123
-```
-
----
-
-### 📥 Ingestion (TODO - Da implementare)
-
-#### `POST /api/v1/ingest`
-Avvia manualmente il processo di ingestion delle note Obsidian.
-
-```bash
-curl -X POST http://localhost:8000/api/v1/ingest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vault_path": "/path/to/vault",
-    "incremental": true,
-    "force": false,
-    "dry_run": false
-  }'
-```
-
-**Risposta:**
-```json
-{
-  "status": "in_progress",
-  "message": "Ingestion started in background",
-  "files_processed": null,
-  "files_skipped": null,
-  "total_chunks": null,
-  "processing_time_s": null
-}
-```
-
-#### `GET /api/v1/ingest/status`
-Ottieni lo stato corrente del processo di ingestion.
-
-```bash
+# Check ingestion status
 curl http://localhost:8000/api/v1/ingest/status
 ```
 
----
+### Interactive API Documentation
 
-### 📚 Documentazione Interattiva
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
 
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-La documentazione interattiva permette di testare tutti gli endpoint direttamente dal browser.
+<!-- CONFIGURATION -->
+## Configuration
 
----
+### Environment Variables
 
-## 🎯 Roadmap
+Create a `.env` file with the following configuration:
 
-### ✅ Fase 1: Foundation (Completata)
-- [x] Setup progetto con uv e pyproject.toml
-- [x] Configurazione con Pydantic Settings
-- [x] Struttura API REST con FastAPI
-- [x] Health check endpoints
-- [x] Docker e docker-compose setup
-- [x] Middleware di logging con request tracking
-- [x] Documentazione API interattiva (Swagger/ReDoc)
+```env
+# Obsidian Vault
+OBSIDIAN_VAULT_PATH=/path/to/your/vault
+OBSIDIAN_FILE_EXTENSIONS=.md,.markdown
+OBSIDIAN_EXCLUDE_FOLDERS=.obsidian,.trash,templates
 
-### 🚧 Fase 2: Ingestion Pipeline (In Corso)
-- [ ] ObsidianParser per markdown + frontmatter
-- [ ] Supporto wikilinks e backlinks
-- [ ] Text chunking (recursive, fixed, semantic)
-- [ ] Integrazione embeddings (OpenAI/local)
-- [ ] Connessione Qdrant vector store
-- [ ] CLI per ingestion (`mneme-ingest`)
-- [ ] Ingestion incrementale con tracking
+# LLM Provider
+LLM_PROVIDER=openai                    # openai or anthropic
+LLM_MODEL=gpt-4o-mini
+LLM_TEMPERATURE=0.7
+OPENAI_API_KEY=your-key-here
 
-### 📋 Fase 3: RAG Agent
-- [ ] Setup Datapizza AI agent
-- [ ] Custom retrieval logic
-- [ ] System prompts per note Obsidian
-- [ ] Implementazione endpoint `/chat`
-- [ ] Gestione conversazioni e context
-- [ ] Source citations nel response
+# Embeddings
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+EMBEDDING_BATCH_SIZE=10
 
-### 🎨 Fase 4: Features Avanzate
-- [ ] Supporto multi-LLM (OpenAI, Anthropic, Mistral)
-- [ ] Embeddings locali con sentence-transformers
-- [ ] Support per immagini nelle note
-- [ ] Graph-based retrieval
-- [ ] Webhook per sync automatica
-- [ ] Frontend web UI
+# Vector Store (Qdrant Cloud)
+VECTOR_STORE_TYPE=qdrant
+QDRANT_URL=https://your-cluster.cloud.qdrant.io
+QDRANT_API_KEY=your-qdrant-key
+VECTOR_STORE_COLLECTION=mneme_knowledge
+
+# Chunking Strategy
+CHUNKING_STRATEGY=fixed                # Recommended: fixed
+CHUNK_SIZE=800                         # Recommended: 800 chars
+CHUNK_OVERLAP=200
+
+# Retrieval
+RETRIEVAL_TOP_K=5
+RETRIEVAL_MIN_SCORE=0.4               # Lower if getting few results
+
+# RAG
+ENABLE_CITATIONS=true
+MAX_CONVERSATION_HISTORY=10
+```
+
+### Docker Commands
+
+```bash
+# Start all services (API + Frontend)
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Rebuild after code changes
+docker compose down
+docker compose build
+docker compose up -d
+
+# Start API only (no frontend)
+docker compose up -d mneme-api
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- API ENDPOINTS -->
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/health` | GET | Health check with vector store status |
+| `/api/v1/chat` | POST | Chat with your knowledge base |
+| `/api/v1/ingest` | POST | Trigger note ingestion |
+| `/api/v1/ingest/status` | GET | Check ingestion status |
+| `/docs` | GET | Swagger UI documentation |
+| `/redoc` | GET | ReDoc documentation |
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- DEVELOPMENT -->
+## Development
+
+### Local Development (without Docker)
+
+1. **Install uv** (fast Python package installer)
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Setup environment**
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv pip install -e ".[dev]"
+   ```
+
+3. **Run the API**
+   ```bash
+   python -m api.main
+   ```
+
+4. **Run the frontend** (in another terminal)
+   ```bash
+   python -m gradio_chat
+   ```
+
+5. **Run ingestion**
+   ```bash
+   python -m ingestion.ingest
+   ```
+
+### Project Structure
+
+```
+mneme/
+├── api/                    # FastAPI REST API
+│   ├── main.py            # Entry point with lifespan
+│   ├── dependencies.py    # Dependency injection
+│   ├── middleware.py      # Request logging
+│   ├── routes/            # API endpoints
+│   │   ├── chat.py
+│   │   ├── health.py
+│   │   └── ingestion.py
+│   └── models/            # Pydantic schemas
+├── config/
+│   └── settings.py        # Configuration from .env
+├── ingestion/             # Ingestion pipeline
+│   ├── parser.py          # Obsidian markdown parser
+│   ├── chunker.py         # Text chunking strategies
+│   ├── embedder.py        # Embedding generation
+│   ├── vectorstore.py     # Qdrant operations
+│   └── ingest.py          # Pipeline orchestration
+├── rag/                   # RAG implementation
+│   ├── agent.py           # Datapizza AI agent
+│   ├── retriever.py       # Semantic retrieval
+│   └── prompts.py         # System prompts
+├── utils/
+│   └── logging.py         # Loguru configuration
+├── gradio_chat.py         # Gradio frontend
+├── docker-compose.yaml    # Docker orchestration
+└── Dockerfile             # Multi-stage build
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- TROUBLESHOOTING -->
+## Troubleshooting
+
+### No Search Results
+
+**Problem:** Queries return no results or very few results.
+
+**Solution:** Lower the `RETRIEVAL_MIN_SCORE` in your `.env` file:
+```env
+RETRIEVAL_MIN_SCORE=0.3  # Try 0.3 or 0.4
+```
+
+### Ingestion Fails
+
+**Problem:** Ingestion endpoint returns errors.
+
+**Solutions:**
+- Verify `OBSIDIAN_VAULT_PATH` is correct
+- In Docker, use the mounted path: `/vault/VaultName`
+- Check `CHUNK_SIZE` isn't too large (recommended: 800)
+- Review logs: `docker compose logs mneme-api`
+
+### Docker Won't Start
+
+**Problem:** Services fail to start or show old code.
+
+**Solution:** Complete rebuild:
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Port Already in Use
+
+**Problem:** Port 8000 or 7860 is already in use.
+
+**Solution:**
+```bash
+# Find and kill the process (macOS/Linux)
+lsof -ti:8000 | xargs kill -9
+
+# Or change the port in docker-compose.yaml
+```
+
+### Environment Variables Not Loading
+
+**Problem:** Changes to `.env` not taking effect.
+
+**Solution:**
+- Never use `docker restart` - it doesn't reload env vars
+- Always: `docker compose down && docker compose up -d`
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- ROADMAP -->
+## Roadmap
+
+- [x] Core RAG implementation with Datapizza AI
+- [x] Obsidian markdown parsing with frontmatter
+- [x] Vector store integration (Qdrant)
+- [x] REST API with FastAPI
+- [x] Chat interface with Gradio
+- [x] Docker deployment
+- [ ] Incremental ingestion (only new/modified notes)
 - [ ] Multi-vault support
+- [ ] Advanced filtering by tags/folders
+- [ ] Export conversation history
+- [ ] Mobile-friendly frontend
+- [ ] Obsidian plugin for inline querying
 
-### 🚀 Fase 5: Production
-- [ ] Test suite completa
-- [ ] CI/CD pipeline
-- [ ] Monitoring e metriche
-- [ ] Rate limiting
-- [ ] Caching
-- [ ] Plugin Obsidian nativo
+See the [open issues](https://github.com/NicoCalcagno/mneme/issues) for a full list of proposed features and known issues.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- CONTRIBUTING -->
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- LICENSE -->
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- CONTACT -->
+## Contact
+
+Nico Calcagno - [@NicoCalcagno](https://github.com/NicoCalcagno)
+
+Project Link: [https://github.com/NicoCalcagno/mneme](https://github.com/NicoCalcagno/mneme)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- ACKNOWLEDGMENTS -->
+## Acknowledgments
+
+* [Datapizza AI](https://github.com/datapizza-labs/datapizza-ai) - For the excellent RAG framework 🍕
+* [Qdrant](https://qdrant.tech) - For the powerful vector database
+* [Obsidian](https://obsidian.md) - For inspiring the project
+* [FastAPI](https://fastapi.tiangolo.com) - For the amazing web framework
+* [Gradio](https://gradio.app) - For the beautiful UI framework
+* Named after **Mneme** (Μνήμη), the Greek goddess of memory and one of the original three Muses
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ---
 
-## 🛠️ Tech Stack
+<div align="center">
+  <p>Made with 🧠 and ☕</p>
+  <p><em>"The palest ink is better than the best memory"</em> - Chinese Proverb</p>
+</div>
 
-- **[Datapizza AI](https://github.com/datapizza-labs/datapizza-ai)** - Framework RAG e Agent
-- **FastAPI** - REST API framework
-- **Qdrant** / **ChromaDB** - Vector database
-- **OpenAI** / **Anthropic** - LLM providers
-- **OpenTelemetry** - Observability
-- **Pydantic** - Data validation
+<!-- MARKDOWN LINKS & IMAGES -->
+[contributors-shield]: https://img.shields.io/github/contributors/NicoCalcagno/mneme.svg?style=for-the-badge
+[contributors-url]: https://github.com/NicoCalcagno/mneme/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/NicoCalcagno/mneme.svg?style=for-the-badge
+[forks-url]: https://github.com/NicoCalcagno/mneme/network/members
+[stars-shield]: https://img.shields.io/github/stars/NicoCalcagno/mneme.svg?style=for-the-badge
+[stars-url]: https://github.com/NicoCalcagno/mneme/stargazers
+[issues-shield]: https://img.shields.io/github/issues/NicoCalcagno/mneme.svg?style=for-the-badge
+[issues-url]: https://github.com/NicoCalcagno/mneme/issues
+[license-shield]: https://img.shields.io/github/license/NicoCalcagno/mneme.svg?style=for-the-badge
+[license-url]: https://github.com/NicoCalcagno/mneme/blob/main/LICENSE
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+[linkedin-url]: https://linkedin.com/in/nico-calcagno
 
----
-
-## 🤝 Contributing
-
-Contributi benvenuti! Apri una issue o una pull request.
-
-1. Fork del progetto
-2. Crea un branch (`git checkout -b feature/amazing-feature`)
-3. Commit delle modifiche (`git commit -m 'Add amazing feature'`)
-4. Push al branch (`git push origin feature/amazing-feature`)
-5. Apri una Pull Request
-
----
-
-## 📄 License
-
-Questo progetto è rilasciato sotto licenza MIT. Vedi il file [LICENSE](LICENSE) per i dettagli.
-
----
-
-## 🙏 Credits
-
-- Built with [Datapizza AI](https://datapizza.tech/en/ai-framework/) 🍕
-- Ispirato dalla community Obsidian
-- Nome dal greco antico *Mneme* (Μνήμη), dea della memoria
-
----
-
-## 📧 Contatti
-
-- **Issues**: [GitHub Issues](https://github.com/tuousername/mneme/issues)
-- **Discussioni**: [GitHub Discussions](https://github.com/tuousername/mneme/discussions)
-
----
-
-<p align="center">
-  Made with 🧠 and ☕ 
-</p>
+[Datapizza-badge]: https://img.shields.io/badge/Datapizza_AI-FF6B35?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=&logoColor=white
+[Datapizza-url]: https://github.com/datapizza-labs/datapizza-ai
+[FastAPI-badge]: https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white
+[FastAPI-url]: https://fastapi.tiangolo.com
+[Python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[Python-url]: https://python.org
+[Docker-badge]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[Docker-url]: https://docker.com
+[Gradio-badge]: https://img.shields.io/badge/Gradio-FF7C00?style=for-the-badge&logo=gradio&logoColor=white
+[Gradio-url]: https://gradio.app
+[OpenAI-badge]: https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white
+[OpenAI-url]: https://openai.com
